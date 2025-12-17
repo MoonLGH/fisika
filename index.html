@@ -3,384 +3,294 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulasi Pengereman Kendaraan (GLBB)</title>
+    <title>Simulasi Pengereman: ABS & Massa</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #e74c3c;
-            --bg-color: #f4f6f7;
+            --primary: #2c3e50;
+            --accent: #e74c3c;
+            --abs-color: #27ae60;
+            --skid-color: #1a1a1a;
+            --bg: #f4f6f7;
         }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 20px;
-            color: #333;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
-        }
-        h1, h2 { color: var(--primary-color); }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
         
-        /* Panel Input & Info */
-        .control-panel {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+        /* Panel Control */
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: var(--primary); font-size: 1.2rem; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
         .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="number"] {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            width: 100%;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 16px;
-            transition: 0.3s;
-        }
-        .btn:hover { background-color: #34495e; }
+        label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         
-        /* Toggle Switch untuk Jalan Basah */
-        .switch-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #eef2f3;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        .toggle-checkbox {
-            height: 0;
-            width: 0;
-            visibility: hidden;
-        }
-        .toggle-label {
-            cursor: pointer;
-            text-indent: -9999px;
-            width: 50px;
-            height: 25px;
-            background: grey;
-            display: block;
-            border-radius: 100px;
-            position: relative;
-        }
-        .toggle-label:after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 21px;
-            height: 21px;
-            background: #fff;
-            border-radius: 90px;
-            transition: 0.3s;
-        }
-        .toggle-checkbox:checked + .toggle-label { background: var(--accent-color); }
-        .toggle-checkbox:checked + .toggle-label:after { left: calc(100% - 2px); transform: translateX(-100%); }
+        .btn { background: var(--primary); color: white; border: none; padding: 12px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn:hover { background: #34495e; }
 
-        /* Area Visualisasi */
-        .visualization-panel {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        #animCanvas {
-            width: 100%;
-            height: 150px;
-            background: #333; /* Warna aspal */
-            border-radius: 4px;
-            border-bottom: 5px dashed white; /* Marka jalan */
-        }
+        /* Hasil & Validasi */
+        .results-mini { margin-top: 15px; font-size: 0.85rem; background: #fafafa; padding: 10px; border-radius: 4px; }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px dashed #ddd; }
+        .physics-val { color: var(--accent); font-weight: bold; }
+
+        /* Canvas Area */
+        .canvas-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #animCanvas { width: 100%; height: 200px; background: #555; border-radius: 4px; border-bottom: 4px dashed #fff; }
         
-        /* Hasil dan Validasi */
-        .results-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
-        }
-        .result-box {
-            background: #f8f9fa;
-            padding: 10px;
-            border-left: 4px solid var(--primary-color);
-        }
-        .result-box.validation {
-            border-left-color: #27ae60;
-        }
-        .charts-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
-        }
+        /* Toggle Jalan Basah */
+        .wet-switch { display: flex; align-items: center; justify-content: space-between; background: #eef2f3; padding: 8px; border-radius: 4px; margin-bottom: 10px; }
         
-        .alert-wet {
-            color: var(--accent-color);
-            font-size: 0.9em;
-            display: none;
-            margin-top: 5px;
-        }
+        /* Indikator Mode */
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; color: white; }
+        .badge-abs { background: var(--abs-color); }
+        .badge-non { background: var(--accent); }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="control-panel">
-            <h2>⚙️ Parameter</h2>
-            
-            <div class="input-group">
-                <label>Kecepatan Awal ($v_0$) [m/s]</label>
-                <input type="number" id="v0" value="20" min="1">
-            </div>
+<div class="container">
+    <div class="panel">
+        <h2>⚙️ Parameter Kendaraan</h2>
 
-            <div class="input-group">
-                <label>Perlambatan ($a$) [m/s²]</label>
-                <input type="number" id="acc" value="-5" max="-0.1" step="0.1">
-                <small style="color: gray;">Masukkan nilai negatif (misal: -5)</small>
-            </div>
-            
-            <div class="input-group">
-                <label>Posisi Awal ($S_0$) [m]</label>
-                <input type="number" id="s0" value="0" min="0">
-            </div>
-
-            <div class="switch-container">
-                <span>🌧️ Mode Jalan Basah</span>
-                <div>
-                    <input type="checkbox" id="wetMode" class="toggle-checkbox">
-                    <label for="wetMode" class="toggle-label">Toggle</label>
-                </div>
-            </div>
-            <div id="wetAlert" class="alert-wet">
-                ⚠️ Jalan basah mengurangi efektivitas rem sebesar 40%!
-            </div>
-
-            <button class="btn" onclick="startSimulation()">Mulai Simulasi</button>
-
-            <div class="results-grid">
-                <div class="result-box">
-                    <strong>Hasil Simulasi:</strong><br>
-                    Waktu: <span id="simTime">0</span> s<br>
-                    Jarak Tempuh: <span id="simDist">0</span> m
-                </div>
-                <div class="result-box validation">
-                    <strong>Validasi (Teori):</strong><br>
-                    $t_{stop} = -v_0/a$: <span id="theoryTime">0</span> s<br>
-                    $S_{stop} = -v_0^2/2a$: <span id="theoryDist">0</span> m
-                </div>
-            </div>
+        <div class="input-group">
+            <label>Sistem Pengereman</label>
+            <select id="brakeType">
+                <option value="abs">✅ ABS (Anti-lock Braking)</option>
+                <option value="non">❌ Non-ABS (Rem Konvensional)</option>
+            </select>
+            <small style="font-size: 0.7em; color: gray;">Non-ABS menyebabkan roda terkunci (selip).</small>
         </div>
 
-        <div class="visualization-panel">
-            <h2>🚗 Visualisasi Pengereman</h2>
-            <canvas id="animCanvas"></canvas>
-            <div style="text-align: right; font-size: 0.8em; margin-top: 5px;">Skala dinamis menyesuaikan jarak henti</div>
+        <div class="input-group">
+            <label>Massa Total ($m$) [kg]</label>
+            <input type="number" id="mass" value="1200" min="500" step="50">
+        </div>
 
-            <div class="charts-container">
-                <div>
-                    <canvas id="chartVt"></canvas>
-                </div>
-                <div>
-                    <canvas id="chartSt"></canvas>
-                </div>
+        <div class="input-group">
+            <label>Kecepatan Awal ($v_0$) [m/s]</label>
+            <input type="number" id="v0" value="25">
+        </div>
+
+        <div class="input-group">
+            <label>Perlambatan Rem ($a$) [m/s²]</label>
+            <input type="number" id="acc" value="-6" max="-0.1" step="0.1">
+        </div>
+
+        <div class="wet-switch">
+            <span>🌧️ Jalan Basah?</span>
+            <input type="checkbox" id="wetMode">
+        </div>
+
+        <button class="btn" onclick="startSim()">🚀 Jalankan Simulasi</button>
+
+        <div class="results-mini">
+            <div class="result-row">
+                <span>Jarak Henti ($S$):</span>
+                <span id="resDist" class="physics-val">0 m</span>
+            </div>
+            <div class="result-row">
+                <span>Waktu Henti ($t$):</span>
+                <span id="resTime" class="physics-val">0 s</span>
+            </div>
+            <div class="result-row">
+                <span>Gaya Pengereman ($F$):</span>
+                <span id="resForce" class="physics-val">0 N</span>
             </div>
         </div>
     </div>
 
-    <script>
-        // Setup Canvas & Charts
-        const canvas = document.getElementById('animCanvas');
-        const ctx = canvas.getContext('2d');
-        let animationFrame;
-        let chartVtInstance = null;
-        let chartStInstance = null;
+    <div class="canvas-container">
+        <h2>Visualisasi & Grafik</h2>
+        <canvas id="animCanvas"></canvas>
+        <div style="display:flex; justify-content:space-between; margin-top:5px; font-size:0.8rem; color:gray;">
+            <span id="statusIndicator">Ready</span>
+            <span>Skala Otomatis</span>
+        </div>
 
-        // Resize canvas resolution
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = 150;
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+            <canvas id="chartVt"></canvas>
+            <canvas id="chartSt"></canvas>
+        </div>
+    </div>
+</div>
 
-        // UI Helpers
-        document.getElementById('wetMode').addEventListener('change', function() {
-            const alert = document.getElementById('wetAlert');
-            alert.style.display = this.checked ? 'block' : 'none';
+<script>
+    const canvas = document.getElementById('animCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Konfigurasi Canvas Resolusi Tinggi
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = 200;
+
+    let animId;
+    let chartVt, chartSt;
+
+    function startSim() {
+        // 1. Ambil Input
+        const v0 = parseFloat(document.getElementById('v0').value);
+        const a_input = parseFloat(document.getElementById('acc').value); // Pasti negatif
+        const mass = parseFloat(document.getElementById('mass').value);
+        const isWet = document.getElementById('wetMode').checked;
+        const brakeType = document.getElementById('brakeType').value;
+
+        // 2. Hitung Faktor Fisika
+        let frictionFactor = 1.0;
+        let skidMarks = false;
+
+        // Logika Jalan Basah
+        if (isWet) frictionFactor *= 0.6; // Jalan basah licin (turun 40%)
+
+        // Logika ABS vs Non-ABS
+        if (brakeType === 'non') {
+            // Non-ABS: Roda terkunci -> Gesekan Kinetis < Gesekan Statis
+            // Efisiensi rem turun tambahan 25% (misal)
+            frictionFactor *= 0.75; 
+            skidMarks = true; 
+        }
+
+        // Hitung Perlambatan Efektif (a_eff)
+        const a_eff = a_input * frictionFactor;
+
+        // Hitung Prediksi (Teori)
+        const t_stop = -v0 / a_eff;
+        const s_stop = (v0 * t_stop) + (0.5 * a_eff * t_stop * t_stop);
+        
+        // Hitung Gaya (F = m * a)
+        // Gaya yang dibutuhkan aspal untuk menghentikan mobil
+        const force = Math.abs(mass * a_eff); 
+
+        // Update UI Angka
+        document.getElementById('resDist').innerText = s_stop.toFixed(2) + " m";
+        document.getElementById('resTime').innerText = t_stop.toFixed(2) + " s";
+        document.getElementById('resForce').innerText = force.toFixed(0) + " N";
+
+        let statusText = `Mode: ${brakeType.toUpperCase()} | `;
+        statusText += isWet ? "Jalan Basah (Licin) 🌧️" : "Jalan Kering ☀️";
+        if(brakeType === 'non') statusText += " | TERJADI SLIP ⚠️";
+        document.getElementById('statusIndicator').innerText = statusText;
+
+        // 3. Setup Animasi
+        cancelAnimationFrame(animId);
+        let t = 0;
+        const dt = 0.03; // Delta time
+        let currV = v0;
+        let currS = 0;
+        
+        // Data Grafik
+        let labels = [], dataV = [], dataS = [];
+        
+        // Skala Visual
+        const maxS = s_stop * 1.2; // Tambah margin 20%
+        const pxPerM = canvas.width / (maxS > 10 ? maxS : 10);
+
+        function animate() {
+            if (currV > 0) {
+                // Fisika Euler
+                currS += currV * dt;
+                currV += a_eff * dt;
+                t += dt;
+
+                if (currV < 0) currV = 0;
+
+                // Simpan Data
+                labels.push(t.toFixed(2));
+                dataV.push(currV.toFixed(2));
+                dataS.push(currS.toFixed(2));
+
+                render(currS, pxPerM, isWet, skidMarks, brakeType);
+                animId = requestAnimationFrame(animate);
+            } else {
+                render(currS, pxPerM, isWet, skidMarks, brakeType);
+                drawCharts(labels, dataV, dataS);
+            }
+        }
+        
+        animate();
+    }
+
+    function render(pos, scale, isWet, showSkid, type) {
+        // Bersihkan
+        ctx.fillStyle = isWet ? "#34495e" : "#555"; // Aspal basah lebih gelap/biru
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        const groundY = 150;
+        const carWidth = 80;
+        const carHeight = 40;
+        const carX = pos * scale;
+
+        // Gambar Skid Marks (Jejak Ban) jika Non-ABS
+        if (showSkid) {
+            ctx.fillStyle = "#111"; // Warna karet ban di aspal
+            // Gambar jejak panjang dari posisi 0 sampai posisi mobil sekarang
+            // Jejak ban kiri
+            ctx.fillRect(0, groundY + 30, carX + 10, 5); 
+            // Jejak ban kanan
+            ctx.fillRect(0, groundY + 5, carX + 10, 5);
+        }
+
+        // Gambar Mobil
+        ctx.save();
+        ctx.translate(carX, groundY);
+
+        // Body Mobil
+        ctx.fillStyle = type === 'abs' ? "#27ae60" : "#c0392b"; // Hijau jika ABS, Merah jika Non-ABS
+        ctx.fillRect(0, 0, carWidth, carHeight);
+        
+        // Atap
+        ctx.fillStyle = "#ecf0f1";
+        ctx.fillRect(50, -20, 30, 20);
+
+        // Roda (Animasi putar sederhana jika tidak di-rem mati)
+        ctx.fillStyle = "black";
+        ctx.beginPath(); ctx.arc(20, 40, 10, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(60, 40, 10, 0, Math.PI*2); ctx.fill();
+
+        // Label Jarak
+        ctx.fillStyle = "white";
+        ctx.font = "14px Arial";
+        ctx.fillText(`${pos.toFixed(1)} m`, 0, -30);
+        
+        ctx.restore();
+
+        // Efek Hujan (Overlay)
+        if (isWet) {
+            ctx.fillStyle = "rgba(200, 200, 255, 0.1)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    function drawCharts(labels, vData, sData) {
+        if(chartVt) chartVt.destroy();
+        if(chartSt) chartSt.destroy();
+
+        chartVt = new Chart(document.getElementById('chartVt'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Kecepatan (v)',
+                    data: vData,
+                    borderColor: '#e74c3c',
+                    pointRadius: 0
+                }]
+            },
+            options: { animation: false }
         });
 
-        function startSimulation() {
-            // 1. Ambil Input
-            let v0 = parseFloat(document.getElementById('v0').value);
-            let a_input = parseFloat(document.getElementById('acc').value);
-            let s0 = parseFloat(document.getElementById('s0').value);
-            const isWet = document.getElementById('wetMode').checked;
+        chartSt = new Chart(document.getElementById('chartSt'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jarak (s)',
+                    data: sData,
+                    borderColor: '#3498db',
+                    pointRadius: 0
+                }]
+            },
+            options: { animation: false }
+        });
+    }
+</script>
 
-            // Validasi Input
-            if (a_input >= 0) {
-                alert("Perlambatan (a) harus bernilai negatif!");
-                return;
-            }
-
-            // Logika "Nilai Tambah": Jalan Basah
-            // Jika basah, efektifitas rem berkurang (a menjadi lebih dekat ke 0)
-            let a = isWet ? a_input * 0.6 : a_input; 
-
-            // 2. Hitung Validasi Teoritis (Rumus Fisika)
-            // t_stop = (v_t - v_0) / a --> saat stop v_t = 0, jadi -v_0 / a
-            const t_stop_theory = -v0 / a;
-            // s_stop = v_0*t + 0.5*a*t^2 (Tanpa s0 untuk jarak pengereman murni)
-            const stopping_distance_theory = (v0 * t_stop_theory) + (0.5 * a * t_stop_theory * t_stop_theory);
-            const total_distance_theory = s0 + stopping_distance_theory;
-
-            // Tampilkan Validasi
-            document.getElementById('theoryTime').innerText = t_stop_theory.toFixed(2);
-            document.getElementById('theoryDist').innerText = stopping_distance_theory.toFixed(2);
-
-            // 3. Reset & Persiapan Animasi
-            cancelAnimationFrame(animationFrame);
-            let t = 0;
-            const dt = 0.02; // Time step (delta t)
-            let currentV = v0;
-            let currentS = s0;
-            
-            // Scaling factor agar mobil tidak keluar layar
-            // Kita beri margin 20% agar tidak mentok kanan
-            const maxDisplayDist = Math.max(total_distance_theory * 1.2, 50); 
-            const scalePixelsPerMeter = canvas.width / maxDisplayDist;
-
-            // Data untuk Grafik
-            let dataTime = [];
-            let dataV = [];
-            let dataS = [];
-
-            // 4. Loop Animasi
-            function animate() {
-                // Update Fisika (Euler Integration)
-                if (currentV > 0) {
-                    currentS += currentV * dt;       // s = s + v*dt
-                    currentV += a * dt;              // v = v + a*dt
-                    t += dt;
-
-                    // Koreksi jika berhenti (v tidak boleh negatif di rem)
-                    if (currentV < 0) {
-                        currentV = 0;
-                        // Koreksi posisi akhir presisi
-                        // currentS = s0 + stopping_distance_theory; 
-                    }
-
-                    // Push Data untuk grafik
-                    dataTime.push(t.toFixed(2));
-                    dataV.push(currentV.toFixed(2));
-                    dataS.push(currentS.toFixed(2));
-
-                    // Update UI Hasil Realtime
-                    document.getElementById('simTime').innerText = t.toFixed(2);
-                    document.getElementById('simDist').innerText = (currentS - s0).toFixed(2);
-                    
-                    renderCar(currentS, scalePixelsPerMeter, isWet);
-                    animationFrame = requestAnimationFrame(animate);
-                } else {
-                    // Selesai Animasi
-                    renderCar(currentS, scalePixelsPerMeter, isWet);
-                    updateCharts(dataTime, dataV, dataS);
-                }
-            }
-
-            // Fungsi Menggambar Mobil
-            function renderCar(pos, scale, wet) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Gambar Jalan
-                ctx.fillStyle = wet ? "#2c3e50" : "#333"; // Lebih biru/gelap jika basah
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Efek Basah (Pantulan/Genangan)
-                if (wet) {
-                    ctx.fillStyle = "rgba(255,255,255,0.1)";
-                    ctx.fillRect(50, 80, 100, 20);
-                    ctx.fillRect(300, 90, 80, 15);
-                }
-
-                // Posisi pixel
-                const carX = pos * scale;
-                const carY = canvas.height / 2 - 20;
-
-                // Gambar Mobil
-                ctx.fillStyle = "#e74c3c";
-                ctx.fillRect(carX, carY, 60, 30); // Body
-                ctx.fillStyle = "#ecf0f1";
-                ctx.fillRect(carX + 40, carY + 5, 15, 20); // Kaca depan
-                
-                // Roda
-                ctx.fillStyle = "black";
-                ctx.beginPath();
-                ctx.arc(carX + 15, carY + 30, 8, 0, Math.PI * 2);
-                ctx.arc(carX + 45, carY + 30, 8, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Teks Jarak di atas mobil
-                ctx.fillStyle = "white";
-                ctx.font = "12px Arial";
-                ctx.fillText(pos.toFixed(1) + "m", carX, carY - 10);
-            }
-
-            animate();
-        }
-
-        // Fungsi Update Chart.js
-        function updateCharts(labels, vData, sData) {
-            // Hapus chart lama jika ada
-            if (chartVtInstance) chartVtInstance.destroy();
-            if (chartStInstance) chartStInstance.destroy();
-
-            // Chart V-t
-            const ctxVt = document.getElementById('chartVt').getContext('2d');
-            chartVtInstance = new Chart(ctxVt, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Kecepatan (v) vs Waktu',
-                        data: vData,
-                        borderColor: '#e74c3c',
-                        tension: 0.1,
-                        pointRadius: 0
-                    }]
-                },
-                options: { animation: false, scales: { x: {title: {display:true, text:'Waktu (s)'}}, y: {title: {display:true, text:'v (m/s)'}} } }
-            });
-
-            // Chart S-t
-            const ctxSt = document.getElementById('chartSt').getContext('2d');
-            chartStInstance = new Chart(ctxSt, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Jarak (s) vs Waktu',
-                        data: sData,
-                        borderColor: '#3498db',
-                        tension: 0.1,
-                        pointRadius: 0
-                    }]
-                },
-                options: { animation: false, scales: { x: {title: {display:true, text:'Waktu (s)'}}, y: {title: {display:true, text:'s (m)'}} } }
-            });
-        }
-    </script>
 </body>
-</html>	
+</html>
